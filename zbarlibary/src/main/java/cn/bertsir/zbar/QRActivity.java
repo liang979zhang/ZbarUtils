@@ -1,8 +1,10 @@
 package cn.bertsir.zbar;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
@@ -11,6 +13,7 @@ import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
@@ -41,7 +44,8 @@ public class QRActivity extends Activity implements View.OnClickListener {
     private FrameLayout fl_title;
     private TextView tv_des;
     private QrConfig options;
-
+    private static final int MY_PERMISSIONS_REQUEST_CALL_PHONE = 1;
+    private static final int MY_PERMISSIONS_REQUEST_CALL_CAMERA = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,8 +63,43 @@ public class QRActivity extends Activity implements View.OnClickListener {
 
         setContentView(R.layout.activity_qr);
         initView();
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.CAMERA},
+                        MY_PERMISSIONS_REQUEST_CALL_PHONE);
+            }
+        }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+
+        if (requestCode == MY_PERMISSIONS_REQUEST_CALL_PHONE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.e("taga", "aaaa");
+            } else {
+                Log.e("taga", "vvvv");
+                Toast.makeText(QRActivity.this, "请手动打开相机权限", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        } else if (requestCode == MY_PERMISSIONS_REQUEST_CALL_CAMERA) {
+            for (int i = 0; i < grantResults.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    //判断是否勾选禁止后不再询问
+                    boolean showRequestPermission = ActivityCompat.shouldShowRequestPermissionRationale(QRActivity.this, permissions[i]);
+                    if (showRequestPermission) {
+                        Toast.makeText(QRActivity.this, "请手动打开相机权限", Toast.LENGTH_SHORT).show();
+                        finish();
+
+                    }
+                }
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
 
     @Override
     protected void onResume() {
@@ -99,8 +138,8 @@ public class QRActivity extends Activity implements View.OnClickListener {
         iv_album.setVisibility(options.isShow_light() ? View.VISIBLE : View.GONE);
         fl_title.setVisibility(options.isShow_title() ? View.VISIBLE : View.GONE);
         iv_flash.setVisibility(options.isShow_light() ? View.VISIBLE : View.GONE);
-        iv_album.setVisibility(options.isShow_album() ? View.VISIBLE :View.GONE);
-        tv_des.setVisibility(options.isShow_des() ? View.VISIBLE :View.GONE);
+        iv_album.setVisibility(options.isShow_album() ? View.VISIBLE : View.GONE);
+        tv_des.setVisibility(options.isShow_des() ? View.VISIBLE : View.GONE);
         tv_des.getPaint().setFlags(Paint.UNDERLINE_TEXT_FLAG); //下划线
 
 
@@ -119,7 +158,7 @@ public class QRActivity extends Activity implements View.OnClickListener {
     private ScanCallback resultCallback = new ScanCallback() {
         @Override
         public void onScanResult(String result) {
-            if(options.isPlay_sound()){
+            if (options.isPlay_sound()) {
                 soundPool.play(1, 1, 1, 0, 0, 1);
             }
             if (cp != null) {
@@ -168,9 +207,9 @@ public class QRActivity extends Activity implements View.OnClickListener {
             if (cp != null) {
                 cp.setFlash();
             }
-        }else if(v.getId() == R.id.mo_scanner_back){
+        } else if (v.getId() == R.id.mo_scanner_back) {
             finish();
-        }else if (v.getId() == R.id.tv_des){
+        } else if (v.getId() == R.id.tv_des) {
             QrManager.getInstance().getCallBack().clickOk();
         }
     }
@@ -190,19 +229,19 @@ public class QRActivity extends Activity implements View.OnClickListener {
                         final String qrcontent = QRUtils.getInstance().decodeQRcode(Qrbitmap);
                         Qrbitmap.recycle();
                         Qrbitmap = null;
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if(!TextUtils.isEmpty(qrcontent)){
-                                        closeProgressDialog();
-                                        QrManager.getInstance().getResultCallback().onScanSuccess(qrcontent);
-                                        finish();
-                                    }else {
-                                        Toast.makeText(getApplicationContext(), "识别失败！", Toast.LENGTH_SHORT).show();
-                                        closeProgressDialog();
-                                    }
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!TextUtils.isEmpty(qrcontent)) {
+                                    closeProgressDialog();
+                                    QrManager.getInstance().getResultCallback().onScanSuccess(qrcontent);
+                                    finish();
+                                } else {
+                                    Toast.makeText(getApplicationContext(), "识别失败！", Toast.LENGTH_SHORT).show();
+                                    closeProgressDialog();
                                 }
-                            });
+                            }
+                        });
                     } catch (Exception e) {
                         Log.e("Exception", e.getMessage(), e);
                     }
